@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
  * World coordinates = math coordinates (x,y).
  * Screen coordinates = pixels in the SVG.
  *
- * We'll keep ALL data in world coords, then transform for rendering.
+ *  ALL data kept in world coords, then transform for rendering.
  */
 
 function clamp(n, min, max) {
@@ -35,6 +35,7 @@ export default function GraphCanvas() {
     yUnit: "",
     showGrid: true,
     showTicks: true,
+    snapToGrid: false,
   });
 
   // --- Screen settings (pixels) ---
@@ -122,6 +123,28 @@ export default function GraphCanvas() {
     return { v, h };
   }, [view, inner.x, inner.y, inner.w, inner.h]);
 
+  const [points, setPoints] = useState([]); // {id, x, y}
+  const [dragId, setDragId] = useState(null);
+
+  function snap(value, step) {
+    if (!step || step <= 0) return value;
+    return Math.round(value / step) * step;
+  }
+
+  function maybeSnapPoint(pt) {
+    if (!view.snapToGrid) return pt;
+    return {
+      x: snap(pt.x, view.xTick),
+      y: snap(pt.y, view.yTick),
+    };
+  }
+
+  function makeId() {
+    return crypto.randomUUID
+      ? crypto.randomUUID()
+      : String(Date.now() + Math.random());
+  }
+
   // --- Click debug: show where you clicked in world coords ---
   const [cursorWorld, setCursorWorld] = useState(null);
   const svgRef = useRef(null);
@@ -135,6 +158,71 @@ export default function GraphCanvas() {
       x: Number(wpt.x.toFixed(3)),
       y: Number(wpt.y.toFixed(3)),
     });
+  }
+
+  // --- Plotting Points functions ---
+  function getSvgPointFromEvent(e) {
+    const rect = svgRef.current.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    return { sx, sy };
+  }
+
+  function isInsidePlotArea(sx, sy) {
+    return (
+      sx >= inner.x &&
+      sx <= inner.x + inner.w &&
+      sy >= inner.y &&
+      sy <= inner.y + inner.h
+    );
+  }
+
+  function onSvgPointerDown(e) {
+    // Only left-click / primary pointer
+    if (e.button !== 0) return;
+
+    const { sx, sy } = getSvgPointFromEvent(e);
+    if (!isInsidePlotArea(sx, sy)) return;
+
+    // If you click empty space, add a point
+    const wptRaw = screenToWorld({ x: sx, y: sy });
+    const wpt = maybeSnapPoint(wptRaw);
+
+    setPoints((prev) => [...prev, { id: makeId(), x: wpt.x, y: wpt.y }]);
+  }
+
+  function onPointPointerDown(e, pointId) {
+    e.stopPropagation(); // don't also trigger svg add-point
+    if (e.button !== 0) return;
+
+    setDragId(pointId);
+
+    // capture pointer so dragging continues even if cursor leaves the circle
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  }
+
+  function onSvgPointerMove(e) {
+    if (!dragId) return;
+
+    const { sx, sy } = getSvgPointFromEvent(e);
+    if (!isInsidePlotArea(sx, sy)) return;
+
+    const wptRaw = screenToWorld({ x: sx, y: sy });
+    const wpt = maybeSnapPoint(wptRaw);
+
+    setPoints((prev) =>
+      prev.map((p) => (p.id === dragId ? { ...p, x: wpt.x, y: wpt.y } : p)),
+    );
+  }
+
+  function onSvgPointerUp() {
+    if (dragId) setDragId(null);
+  }
+
+  //--- simple right-click delete point ---
+  function onPointContextMenu(e, pointId) {
+    e.preventDefault();
+    setPoints((prev) => prev.filter((p) => p.id !== pointId));
   }
 
   return (
@@ -237,6 +325,17 @@ export default function GraphCanvas() {
           />
           ticks
         </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <input
+            type="checkbox"
+            checked={view.snapToGrid}
+            onChange={(e) =>
+              setView((v) => ({ ...v, snapToGrid: e.target.checked }))
+            }
+          />
+          snap
+        </label>
+
         <label>
           x label{" "}
           <input
@@ -281,6 +380,10 @@ export default function GraphCanvas() {
           />
         </label>
 
+        <div style={{ fontSize: 14, opacity: 0.8 }}>
+          points: {points.length} (right-click a point to delete)
+        </div>
+
         <div style={{ marginLeft: "auto", fontSize: 14, opacity: 0.8 }}>
           {cursorWorld ? (
             <span>
@@ -296,12 +399,16 @@ export default function GraphCanvas() {
         ref={svgRef}
         width={W}
         height={H}
+        onPointerDown={onSvgPointerDown}
+        onPointerMove={onSvgPointerMove}
+        onPointerUp={onSvgPointerUp}
+        onPointerLeave={onSvgPointerUp}
         onClick={onSvgClick}
         style={{
           border: "1px solid #ddd",
           background: "white",
           borderRadius: 8,
-          cursor: "crosshair",
+          cursor: dragId ? "grabbing" : "crosshair",
         }}
       >
         {/* Plot area background */}
@@ -373,6 +480,25 @@ export default function GraphCanvas() {
           stroke="black"
           strokeWidth="2"
         />
+
+        {/* Points */}
+        <g>
+          {points.map((p) => {
+            const s = worldToScreen({ x: p.x, y: p.y });
+            return (
+              <circle
+                key={p.id}
+                cx={s.x}
+                cy={s.y}
+                r={6}
+                fill="black"
+                style={{ cursor: "grab" }}
+                onPointerDown={(e) => onPointPointerDown(e, p.id)}
+                onContextMenu={(e) => onPointContextMenu(e, p.id)}
+              />
+            );
+          })}
+        </g>
 
         {/* Tick labels */}
         <g fontSize="12" fontFamily="system-ui, sans-serif">
