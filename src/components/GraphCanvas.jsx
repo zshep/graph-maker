@@ -30,6 +30,7 @@ export default function GraphCanvas() {
     xTick: 1,
     yTick: 1,
     showGrid: true,
+    showTicks: true,
   });
 
   // --- Screen settings (pixels) ---
@@ -72,6 +73,8 @@ export default function GraphCanvas() {
   const xAxisY = clamp(axisYScreen, inner.y, inner.y + inner.h);
 
   // --- classic Q1 styling ---
+  const xAxisAtBottom = view.yMin >= 0; // x-axis is on/below plot → label x ticks in bottom margin
+  const yAxisAtLeft = view.xMin >= 0; // y-axis is on/left of plot → label y ticks in left margin
   const isClassicQ1 = view.xMin === 0 && view.yMin === 0;
 
   // --- Grid lines (world ticks to screen) ---
@@ -205,6 +208,16 @@ export default function GraphCanvas() {
           />
           grid
         </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <input
+            type="checkbox"
+            checked={view.showTicks}
+            onChange={(e) =>
+              setView((v) => ({ ...v, showTicks: e.target.checked }))
+            }
+          />
+          ticks
+        </label>
 
         <div style={{ marginLeft: "auto", fontSize: 14, opacity: 0.8 }}>
           {cursorWorld ? (
@@ -299,16 +312,15 @@ export default function GraphCanvas() {
           strokeWidth="2"
         />
 
-        {/* Simple tick labels (MVP) */}
+        {/* Tick labels */}
         <g fontSize="12" fontFamily="system-ui, sans-serif">
           {/* X tick labels */}
           {gridLines.v.map((ln) => {
-            // In classic Q1, hide the x-axis 0 label (we'll draw one shared "0" at the corner)
+            // Hide x-axis 0 label only in classic Q1 (we'll draw one shared "0")
             if (isClassicQ1 && Math.abs(ln.xWorld) < 1e-9) return null;
 
-            // In classic Q1, put labels in the bottom margin (outside bold border)
-            const labelY = isClassicQ1
-              ? inner.y + inner.h + 18
+            const labelY = xAxisAtBottom
+              ? inner.y + inner.h + 18 // bottom margin
               : clamp(xAxisY + 16, inner.y + 14, inner.y + inner.h - 4);
 
             return (
@@ -325,12 +337,11 @@ export default function GraphCanvas() {
 
           {/* Y tick labels */}
           {gridLines.h.map((ln) => {
-            // In classic Q1, hide the y-axis 0 label (we'll draw one shared "0" at the corner)
+            // Hide y-axis 0 label only in classic Q1 (we'll draw one shared "0")
             if (isClassicQ1 && Math.abs(ln.yWorld) < 1e-9) return null;
 
-            // In classic Q1, put labels in the left margin (outside bold border)
-            const labelX = isClassicQ1
-              ? inner.x - 8
+            const labelX = yAxisAtLeft
+              ? inner.x - 8 // left margin
               : clamp(yAxisX - 8, inner.x + 10, inner.x + inner.w - 10);
 
             return (
@@ -345,13 +356,43 @@ export default function GraphCanvas() {
             );
           })}
 
-          {/* Single shared 0 label at the bottom-left corner in classic Q1 */}
+          {/* Single shared 0 label only when both mins are exactly 0 */}
           {isClassicQ1 && (
             <text x={inner.x - 8} y={inner.y + inner.h + 18} textAnchor="end">
               0
             </text>
           )}
         </g>
+        {/* Axis tick marks (hash marks) */}
+        {view.showTicks && (
+          <g>
+            {/* ticks on x-axis (vertical little lines) */}
+            {gridLines.v.map((ln) => (
+              <line
+                key={`x-tick-${ln.xWorld}`}
+                x1={ln.xScreen}
+                y1={xAxisY - 6}
+                x2={ln.xScreen}
+                y2={xAxisY + 6}
+                stroke="black"
+                strokeWidth="2"
+              />
+            ))}
+
+            {/* ticks on y-axis (horizontal little lines) */}
+            {gridLines.h.map((ln) => (
+              <line
+                key={`y-tick-${ln.yWorld}`}
+                x1={yAxisX - 6}
+                y1={ln.yScreen}
+                x2={yAxisX + 6}
+                y2={ln.yScreen}
+                stroke="black"
+                strokeWidth="2"
+              />
+            ))}
+          </g>
+        )}
       </svg>
     </div>
   );
