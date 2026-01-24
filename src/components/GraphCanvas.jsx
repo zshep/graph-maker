@@ -71,6 +71,9 @@ export default function GraphCanvas() {
   const yAxisX = clamp(axisXScreen, inner.x, inner.x + inner.w);
   const xAxisY = clamp(axisYScreen, inner.y, inner.y + inner.h);
 
+  // --- classic Q1 styling ---
+  const isClassicQ1 = view.xMin === 0 && view.yMin === 0;
+
   // --- Grid lines (world ticks to screen) ---
   const gridLines = useMemo(() => {
     if (!view.showGrid) return { v: [], h: [] };
@@ -114,13 +117,22 @@ export default function GraphCanvas() {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <label>
           xMin{" "}
           <input
             type="number"
             value={view.xMin}
-            onChange={(e) => setView((v) => ({ ...v, xMin: Number(e.target.value) }))}
+            onChange={(e) =>
+              setView((v) => ({ ...v, xMin: Number(e.target.value) }))
+            }
             style={{ width: 90 }}
           />
         </label>
@@ -129,7 +141,9 @@ export default function GraphCanvas() {
           <input
             type="number"
             value={view.xMax}
-            onChange={(e) => setView((v) => ({ ...v, xMax: Number(e.target.value) }))}
+            onChange={(e) =>
+              setView((v) => ({ ...v, xMax: Number(e.target.value) }))
+            }
             style={{ width: 90 }}
           />
         </label>
@@ -138,7 +152,9 @@ export default function GraphCanvas() {
           <input
             type="number"
             value={view.yMin}
-            onChange={(e) => setView((v) => ({ ...v, yMin: Number(e.target.value) }))}
+            onChange={(e) =>
+              setView((v) => ({ ...v, yMin: Number(e.target.value) }))
+            }
             style={{ width: 90 }}
           />
         </label>
@@ -147,7 +163,9 @@ export default function GraphCanvas() {
           <input
             type="number"
             value={view.yMax}
-            onChange={(e) => setView((v) => ({ ...v, yMax: Number(e.target.value) }))}
+            onChange={(e) =>
+              setView((v) => ({ ...v, yMax: Number(e.target.value) }))
+            }
             style={{ width: 90 }}
           />
         </label>
@@ -158,7 +176,9 @@ export default function GraphCanvas() {
             min="0.1"
             step="0.1"
             value={view.xTick}
-            onChange={(e) => setView((v) => ({ ...v, xTick: Number(e.target.value) }))}
+            onChange={(e) =>
+              setView((v) => ({ ...v, xTick: Number(e.target.value) }))
+            }
             style={{ width: 90 }}
           />
         </label>
@@ -169,7 +189,9 @@ export default function GraphCanvas() {
             min="0.1"
             step="0.1"
             value={view.yTick}
-            onChange={(e) => setView((v) => ({ ...v, yTick: Number(e.target.value) }))}
+            onChange={(e) =>
+              setView((v) => ({ ...v, yTick: Number(e.target.value) }))
+            }
             style={{ width: 90 }}
           />
         </label>
@@ -177,7 +199,9 @@ export default function GraphCanvas() {
           <input
             type="checkbox"
             checked={view.showGrid}
-            onChange={(e) => setView((v) => ({ ...v, showGrid: e.target.checked }))}
+            onChange={(e) =>
+              setView((v) => ({ ...v, showGrid: e.target.checked }))
+            }
           />
           grid
         </label>
@@ -206,7 +230,13 @@ export default function GraphCanvas() {
         }}
       >
         {/* Plot area background */}
-        <rect x={inner.x} y={inner.y} width={inner.w} height={inner.h} fill="white" />
+        <rect
+          x={inner.x}
+          y={inner.y}
+          width={inner.w}
+          height={inner.h}
+          fill="white"
+        />
 
         {/* Grid */}
         {view.showGrid && (
@@ -269,19 +299,40 @@ export default function GraphCanvas() {
           strokeWidth="2"
         />
 
-        {/* Simple tick labels along axes (MVP) */}
+        {/* Simple tick labels (MVP) */}
         <g fontSize="12" fontFamily="system-ui, sans-serif">
+          {/* X tick labels */}
           {gridLines.v.map((ln) => {
-            // label near x-axis if visible, otherwise bottom
-            const labelY = clamp(xAxisY + 16, inner.y + 14, inner.y + inner.h - 4);
+            // In classic Q1, hide the x-axis 0 label (we'll draw one shared "0" at the corner)
+            if (isClassicQ1 && Math.abs(ln.xWorld) < 1e-9) return null;
+
+            // In classic Q1, put labels in the bottom margin (outside bold border)
+            const labelY = isClassicQ1
+              ? inner.y + inner.h + 18
+              : clamp(xAxisY + 16, inner.y + 14, inner.y + inner.h - 4);
+
             return (
-              <text key={`xt-${ln.xWorld}`} x={ln.xScreen} y={labelY} textAnchor="middle">
+              <text
+                key={`xt-${ln.xWorld}`}
+                x={ln.xScreen}
+                y={labelY}
+                textAnchor="middle"
+              >
                 {Number(ln.xWorld.toFixed(6))}
               </text>
             );
           })}
+
+          {/* Y tick labels */}
           {gridLines.h.map((ln) => {
-            const labelX = clamp(yAxisX - 8, inner.x + 10, inner.x + inner.w - 10);
+            // In classic Q1, hide the y-axis 0 label (we'll draw one shared "0" at the corner)
+            if (isClassicQ1 && Math.abs(ln.yWorld) < 1e-9) return null;
+
+            // In classic Q1, put labels in the left margin (outside bold border)
+            const labelX = isClassicQ1
+              ? inner.x - 8
+              : clamp(yAxisX - 8, inner.x + 10, inner.x + inner.w - 10);
+
             return (
               <text
                 key={`yt-${ln.yWorld}`}
@@ -293,6 +344,13 @@ export default function GraphCanvas() {
               </text>
             );
           })}
+
+          {/* Single shared 0 label at the bottom-left corner in classic Q1 */}
+          {isClassicQ1 && (
+            <text x={inner.x - 8} y={inner.y + inner.h + 18} textAnchor="end">
+              0
+            </text>
+          )}
         </g>
       </svg>
     </div>
