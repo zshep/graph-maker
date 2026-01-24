@@ -29,6 +29,10 @@ export default function GraphCanvas() {
     yMax: 10,
     xTick: 1,
     yTick: 1,
+    xLabel: "",
+    xUnit: "",
+    yLabel: "",
+    yUnit: "",
     showGrid: true,
     showTicks: true,
   });
@@ -76,6 +80,21 @@ export default function GraphCanvas() {
   const xAxisAtBottom = view.yMin >= 0; // x-axis is on/below plot → label x ticks in bottom margin
   const yAxisAtLeft = view.xMin >= 0; // y-axis is on/left of plot → label y ticks in left margin
   const isClassicQ1 = view.xMin === 0 && view.yMin === 0;
+
+  // --- units ---
+  const xAxisText =
+    view.xLabel.trim() === ""
+      ? ""
+      : view.xUnit.trim() === ""
+        ? view.xLabel.trim()
+        : `${view.xLabel.trim()} (${view.xUnit.trim()})`;
+
+  const yAxisText =
+    view.yLabel.trim() === ""
+      ? ""
+      : view.yUnit.trim() === ""
+        ? view.yLabel.trim()
+        : `${view.yLabel.trim()} (${view.yUnit.trim()})`;
 
   // --- Grid lines (world ticks to screen) ---
   const gridLines = useMemo(() => {
@@ -217,6 +236,49 @@ export default function GraphCanvas() {
             }
           />
           ticks
+        </label>
+        <label>
+          x label{" "}
+          <input
+            type="text"
+            value={view.xLabel}
+            onChange={(e) => setView((v) => ({ ...v, xLabel: e.target.value }))}
+            placeholder="e.g., Time"
+            style={{ width: 140 }}
+          />
+        </label>
+
+        <label>
+          x unit{" "}
+          <input
+            type="text"
+            value={view.xUnit}
+            onChange={(e) => setView((v) => ({ ...v, xUnit: e.target.value }))}
+            placeholder="e.g., s"
+            style={{ width: 90 }}
+          />
+        </label>
+
+        <label>
+          y label{" "}
+          <input
+            type="text"
+            value={view.yLabel}
+            onChange={(e) => setView((v) => ({ ...v, yLabel: e.target.value }))}
+            placeholder="e.g., Velocity"
+            style={{ width: 140 }}
+          />
+        </label>
+
+        <label>
+          y unit{" "}
+          <input
+            type="text"
+            value={view.yUnit}
+            onChange={(e) => setView((v) => ({ ...v, yUnit: e.target.value }))}
+            placeholder="e.g., m/s"
+            style={{ width: 90 }}
+          />
         </label>
 
         <div style={{ marginLeft: "auto", fontSize: 14, opacity: 0.8 }}>
@@ -363,6 +425,31 @@ export default function GraphCanvas() {
             </text>
           )}
         </g>
+
+        {/* Axis labels */}
+        <g fontFamily="system-ui, sans-serif" fontSize="14">
+          {/* X axis label (centered below plot) */}
+          {xAxisText && (
+            <text
+              x={inner.x + inner.w / 2}
+              y={inner.y + inner.h + 44}
+              textAnchor="middle"
+            >
+              {xAxisText}
+            </text>
+          )}
+
+          {/* Y axis label (rotated, centered left of plot) */}
+          {yAxisText && (
+            <text
+              transform={`translate(${inner.x - 44}, ${inner.y + inner.h / 2}) rotate(-90)`}
+              textAnchor="middle"
+            >
+              {yAxisText}
+            </text>
+          )}
+        </g>
+
         {/* Axis tick marks (hash marks) */}
         {view.showTicks && (
           <g>
