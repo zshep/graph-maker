@@ -383,6 +383,19 @@ export default function GraphCanvas() {
         <div style={{ fontSize: 14, opacity: 0.8 }}>
           points: {points.length} (right-click a point to delete)
         </div>
+        <button
+          onClick={() => setPoints([])}
+          disabled={points.length === 0}
+          style={{
+            padding: "6px 10px",
+            borderRadius: 6,
+            border: "1px solid #999",
+            background: points.length === 0 ? "#f3f3f3" : "white",
+            cursor: points.length === 0 ? "not-allowed" : "pointer",
+          }}
+        >
+          Delete all points
+        </button>
 
         <div style={{ marginLeft: "auto", fontSize: 14, opacity: 0.8 }}>
           {cursorWorld ? (
