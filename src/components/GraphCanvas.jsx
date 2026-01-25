@@ -20,9 +20,13 @@ function niceCeilToStep(value, step) {
 }
 
 export default function GraphCanvas() {
-  // selected points states
+  // States for points / ids and segments
   const [selectedPointId, setSelectedPointId] = useState(null);
   const [showPointLabels, setShowPointLabels] = useState(true);
+  const [segments, setSegments] = useState([]); // {id, aId, bId}
+  const [selectedSegmentId, setSelectedSegmentId] = useState(null);
+  const [pendingSegmentStartId, setPendingSegmentStartId] = useState(null);
+  const [tool, setTool] = useState("point"); // "point" | "segment"
 
   // --- Viewport / graph settings (world units) ---
   const [view, setView] = useState({
@@ -130,6 +134,13 @@ export default function GraphCanvas() {
   const [points, setPoints] = useState([]); // {id, x, y}
   const [dragId, setDragId] = useState(null);
 
+  //helper to  look up point by id:
+  const pointById = useMemo(() => {
+    const m = new Map();
+    for (const p of points) m.set(p.id, p);
+    return m;
+  }, [points]);
+
   function snap(value, step) {
     if (!step || step <= 0) return value;
     return Math.round(value / step) * step;
@@ -182,31 +193,64 @@ export default function GraphCanvas() {
   }
 
   function onSvgPointerDown(e) {
-  // Only left-click / primary pointer
-  if (e.button !== 0) return;
+    // Only left-click / primary pointer
+    if (e.button !== 0) return;
 
-  const { sx, sy } = getSvgPointFromEvent(e);
-  if (!isInsidePlotArea(sx, sy)) return;
+    const { sx, sy } = getSvgPointFromEvent(e);
+    if (!isInsidePlotArea(sx, sy)) return;
 
-  
-  // Convert pixels -> world coords, then optionally snap
-  const wptRaw = screenToWorld({ x: sx, y: sy });
-  const wpt = maybeSnapPoint(wptRaw);
+    if (tool === "segment") {
+      //clicking empty space cancels pending segment
+      setPendingSegmentStartId(null);
+      return;
+    }
 
-  const id = makeId();
-  setPoints((prev) => [...prev, { id, x: wpt.x, y: wpt.y }]);
-  setSelectedPointId(id);
+    // Convert pixels -> world coords, then optionally snap
+    const wptRaw = screenToWorld({ x: sx, y: sy });
+    const wpt = maybeSnapPoint(wptRaw);
 
-  //console.log("added point world:", wpt);
-}
+    const id = makeId();
+    setPoints((prev) => [...prev, { id, x: wpt.x, y: wpt.y }]);
+    setSelectedPointId(id);
+
+    //console.log("added point world:", wpt);
+  }
 
   function onPointPointerDown(e, pointId) {
     e.stopPropagation(); // don't also trigger svg add-point
     if (e.button !== 0) return;
 
     setSelectedPointId(pointId);
-    setDragId(pointId);
+    setSelectedSegmentId(null);
 
+    if (tool === "segment") {
+      //if starting a segment
+      if (!pendingSegmentStartId) {
+        setPendingSegmentStartId(pointId);
+        return;
+      }
+
+      //if choosing a second point
+      const aId = pendingSegmentStartId;
+      const bId = pointId;
+
+      //prevent zero-length segment
+      if (aId !== bId) {
+        //prevent dublicates (A-B same as B-A)
+        const exists = segments.some(
+          (s) => (s.aId === aId && s.bId === bId) || (s.aId === bId && s.bId),
+        );
+        if (!exists) {
+          setSegments((prev) => [...prev, { id: makeId(), aId, bId }]);
+        }
+      }
+
+      setPendingSegmentStartId(null);
+      return;
+    }
+
+    // point tool: drag
+    setDragId(pointId);
     // capture pointer so dragging continues even if cursor leaves the circle
     e.currentTarget.setPointerCapture?.(e.pointerId);
   }
@@ -233,25 +277,37 @@ export default function GraphCanvas() {
   function onPointContextMenu(e, pointId) {
     e.preventDefault();
     setPoints((prev) => prev.filter((p) => p.id !== pointId));
+    setSegments((prev) => prev.filter((s) => s.aId !== pointId && s.bId !== pointId));
     setSelectedPointId((cur) => (cur === pointId ? null : cur));
+    setPendingSegmentStartId((cur) => (cur === pointId ? null : cur));
   }
 
   //---labeling of points logic---
 
   useEffect(() => {
     function onKeyDown(e) {
-      if (!selectedPointId) return;
+    if (e.key !== "Delete" && e.key !== "Backspace") return;
 
-      if (e.key === "Delete" || e.key === "Backspace") {
-        e.preventDefault();
-        setPoints((prev) => prev.filter((p) => p.id !== selectedPointId));
-        setSelectedPointId(null);
-      }
+    if (selectedPointId) {
+      e.preventDefault();
+      setPoints((prev) => prev.filter((p) => p.id !== selectedPointId));
+      // also remove any segments connected to that point
+      setSegments((prev) => prev.filter((s) => s.aId !== selectedPointId && s.bId !== selectedPointId));
+      setSelectedPointId(null);
+      return;
     }
+
+    if (selectedSegmentId) {
+      e.preventDefault();
+      setSegments((prev) => prev.filter((s) => s.id !== selectedSegmentId));
+      setSelectedSegmentId(null);
+      return;
+    }
+  }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedPointId]);
+  }, [selectedPointId, selectedSegmentId]);
 
   function indexToLabel(i) {
     // A..Z, then AA..AZ, BA.. etc
@@ -383,6 +439,31 @@ export default function GraphCanvas() {
           />
           labels
         </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <input
+            type="radio"
+            name="tool"
+            checked={tool === "point"}
+            onChange={() => setTool("point")}
+          />
+          points
+        </label>
+
+        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <input
+            type="radio"
+            name="tool"
+            checked={tool === "segment"}
+            onChange={() => setTool("segment")}
+          />
+          segments
+        </label>
+
+        {tool === "segment" && pendingSegmentStartId && (
+          <span style={{ fontSize: 14, opacity: 0.8 }}>
+            segment: select second point…
+          </span>
+        )}
 
         <label>
           x label{" "}
@@ -541,6 +622,43 @@ export default function GraphCanvas() {
           stroke="black"
           strokeWidth="2"
         />
+
+        {/* Segments */}
+        <g>
+          {segments.map((seg) => {
+            const a = pointById.get(seg.aId);
+            const b = pointById.get(seg.bId);
+            if (!a || !b) return null;
+
+            const A = worldToScreen({ x: a.x, y: a.y });
+            const B = worldToScreen({ x: b.x, y: b.y });
+
+            const isSelected = seg.id === selectedSegmentId;
+
+            return (
+              <line
+                key={seg.id}
+                x1={A.x}
+                y1={A.y}
+                x2={B.x}
+                y2={B.y}
+                stroke="black"
+                strokeWidth={isSelected ? 4 : 2}
+                style={{ cursor: "pointer" }}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  setSelectedSegmentId(seg.id);
+                  setSelectedPointId(null);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setSegments((prev) => prev.filter((s) => s.id !== seg.id));
+                  setSelectedSegmentId((cur) => (cur === seg.id ? null : cur));
+                }}
+              />
+            );
+          })}
+        </g>
 
         {/* Points */}
         <g>
