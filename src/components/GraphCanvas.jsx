@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 
 /**
  * World coordinates = math coordinates (x,y).
@@ -20,6 +20,10 @@ function niceCeilToStep(value, step) {
 }
 
 export default function GraphCanvas() {
+  // selected points states
+  const [selectedPointId, setSelectedPointId] = useState(null);
+  const [showPointLabels, setShowPointLabels] = useState(true);
+
   // --- Viewport / graph settings (world units) ---
   const [view, setView] = useState({
     // A friendly default for 4-quadrant
@@ -178,23 +182,29 @@ export default function GraphCanvas() {
   }
 
   function onSvgPointerDown(e) {
-    // Only left-click / primary pointer
-    if (e.button !== 0) return;
+  // Only left-click / primary pointer
+  if (e.button !== 0) return;
 
-    const { sx, sy } = getSvgPointFromEvent(e);
-    if (!isInsidePlotArea(sx, sy)) return;
+  const { sx, sy } = getSvgPointFromEvent(e);
+  if (!isInsidePlotArea(sx, sy)) return;
 
-    // If you click empty space, add a point
-    const wptRaw = screenToWorld({ x: sx, y: sy });
-    const wpt = maybeSnapPoint(wptRaw);
+  
+  // Convert pixels -> world coords, then optionally snap
+  const wptRaw = screenToWorld({ x: sx, y: sy });
+  const wpt = maybeSnapPoint(wptRaw);
 
-    setPoints((prev) => [...prev, { id: makeId(), x: wpt.x, y: wpt.y }]);
-  }
+  const id = makeId();
+  setPoints((prev) => [...prev, { id, x: wpt.x, y: wpt.y }]);
+  setSelectedPointId(id);
+
+  //console.log("added point world:", wpt);
+}
 
   function onPointPointerDown(e, pointId) {
     e.stopPropagation(); // don't also trigger svg add-point
     if (e.button !== 0) return;
 
+    setSelectedPointId(pointId);
     setDragId(pointId);
 
     // capture pointer so dragging continues even if cursor leaves the circle
@@ -219,10 +229,39 @@ export default function GraphCanvas() {
     if (dragId) setDragId(null);
   }
 
-  //--- simple right-click delete point ---
+  //simple right-click delete point
   function onPointContextMenu(e, pointId) {
     e.preventDefault();
     setPoints((prev) => prev.filter((p) => p.id !== pointId));
+    setSelectedPointId((cur) => (cur === pointId ? null : cur));
+  }
+
+  //---labeling of points logic---
+
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (!selectedPointId) return;
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        setPoints((prev) => prev.filter((p) => p.id !== selectedPointId));
+        setSelectedPointId(null);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedPointId]);
+
+  function indexToLabel(i) {
+    // A..Z, then AA..AZ, BA.. etc
+    let n = i;
+    let s = "";
+    while (n >= 0) {
+      s = String.fromCharCode(65 + (n % 26)) + s;
+      n = Math.floor(n / 26) - 1;
+    }
+    return s;
   }
 
   return (
@@ -336,6 +375,15 @@ export default function GraphCanvas() {
           snap
         </label>
 
+        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <input
+            type="checkbox"
+            checked={showPointLabels}
+            onChange={(e) => setShowPointLabels(e.target.checked)}
+          />
+          labels
+        </label>
+
         <label>
           x label{" "}
           <input
@@ -400,7 +448,7 @@ export default function GraphCanvas() {
         <div style={{ marginLeft: "auto", fontSize: 14, opacity: 0.8 }}>
           {cursorWorld ? (
             <span>
-              click → world: ({cursorWorld.x}, {cursorWorld.y})
+              (x,y): ({cursorWorld.x}, {cursorWorld.y})
             </span>
           ) : (
             <span>click on the graph to see world coords</span>
@@ -496,19 +544,36 @@ export default function GraphCanvas() {
 
         {/* Points */}
         <g>
-          {points.map((p) => {
+          {points.map((p, i) => {
             const s = worldToScreen({ x: p.x, y: p.y });
+            const isSelected = p.id === selectedPointId;
+            const label = indexToLabel(i);
+
             return (
-              <circle
-                key={p.id}
-                cx={s.x}
-                cy={s.y}
-                r={6}
-                fill="black"
-                style={{ cursor: "grab" }}
-                onPointerDown={(e) => onPointPointerDown(e, p.id)}
-                onContextMenu={(e) => onPointContextMenu(e, p.id)}
-              />
+              <g key={p.id}>
+                <circle
+                  cx={s.x}
+                  cy={s.y}
+                  r={6}
+                  fill="black"
+                  stroke={isSelected ? "black" : "none"}
+                  strokeWidth={isSelected ? 3 : 0}
+                  style={{ cursor: "grab" }}
+                  onPointerDown={(e) => onPointPointerDown(e, p.id)}
+                  onContextMenu={(e) => onPointContextMenu(e, p.id)}
+                />
+
+                {showPointLabels && (
+                  <text
+                    x={s.x + 10}
+                    y={s.y - 10}
+                    fontSize="14"
+                    fontFamily="system-ui, sans-serif"
+                  >
+                    {label}
+                  </text>
+                )}
+              </g>
             );
           })}
         </g>
