@@ -26,8 +26,9 @@ export default function GraphCanvas() {
   const [segments, setSegments] = useState([]); // {id, aId, bId}
   const [selectedSegmentId, setSelectedSegmentId] = useState(null);
   const [segmentDrag, setSegmentDrag] = useState(null);
-
   const [tool, setTool] = useState("point"); // "point" | "segment"
+
+  const [panelOpen, setPanelOpen] = useState(true);
 
   // --- Viewport / graph settings (world units) ---
   const [view, setView] = useState({
@@ -165,19 +166,13 @@ export default function GraphCanvas() {
   const [cursorWorld, setCursorWorld] = useState(null);
   const svgRef = useRef(null);
 
-  function onSvgClick(e) {
-    const rect = svgRef.current.getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
-    const wpt = screenToWorld({ x: sx, y: sy });
-    setCursorWorld({
-      x: Number(wpt.x.toFixed(3)),
-      y: Number(wpt.y.toFixed(3)),
-    });
-  }
+  
 
   // --- Plotting Points functions ---
   function getSvgPointFromEvent(e) {
+    const el = svgRef.current;
+    if (!el) return null;
+
     const rect = svgRef.current.getBoundingClientRect();
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
@@ -216,19 +211,28 @@ export default function GraphCanvas() {
     // Only left-click / primary pointer
     if (e.button !== 0) return;
 
+    const pt = getSvgPointFromEvent(e);
+    if (!pt) return;
+    
+    
     const { sx, sy } = getSvgPointFromEvent(e);
     if (!isInsidePlotArea(sx, sy)) return;
-
-    if (tool === "segment") {
-      //clicking empty space cancels pending segment
-
-      setSegmentDrag(null);
-      return;
-    }
 
     // Convert pixels -> world coords, then optionally snap
     const wptRaw = screenToWorld({ x: sx, y: sy });
     const wpt = maybeSnapPoint(wptRaw);
+
+    // degub readout
+    setCursorWorld({
+      x: Number(wpt.x.toFixed(3)),
+      y: Number(wpt.y.toFixed(3)),
+    });
+
+    if (tool === "segment") {
+      //clicking empty space cancels pending segment
+      setSegmentDrag(null);
+      return;
+    }
 
     const id = makeId();
     setPoints((prev) => [...prev, { id, x: wpt.x, y: wpt.y }]);
@@ -260,6 +264,9 @@ export default function GraphCanvas() {
   }
 
   function onSvgPointerMove(e) {
+    const pt = getSvgPointFromEvent(e);
+    if (!pt) return;
+    
     const { sx, sy } = getSvgPointFromEvent(e);
 
     //segment preview drag
@@ -283,6 +290,14 @@ export default function GraphCanvas() {
   }
 
   function onSvgPointerUp(e) {
+    const pt = getSvgPointFromEvent(e);
+    if (!pt) {
+      if (segmentDrag) setSegmentDrag(null);
+      if (dragId) setDragId(null);
+      return;
+    }
+    
+    
     const { sx, sy } =
       e && svgRef.current ? getSvgPointFromEvent(e) : { sx: null, sy: null };
 
@@ -366,509 +381,563 @@ export default function GraphCanvas() {
   }
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
+      {/* Control Panel */}
       <div
         style={{
-          display: "flex",
-          gap: 12,
-          alignItems: "center",
-          flexWrap: "wrap",
+          width: panelOpen ? 360 : 44,
+          border: "1px solid #ddd",
+          borderRadius: 8,
+          padding: panelOpen ? 12 : 6,
+          background: "white",
+          overflow: "hidden",
         }}
       >
-        <label>
-          xMin{" "}
-          <input
-            type="number"
-            value={view.xMin}
-            onChange={(e) =>
-              setView((v) => ({ ...v, xMin: Number(e.target.value) }))
-            }
-            style={{ width: 90 }}
-          />
-        </label>
-        <label>
-          xMax{" "}
-          <input
-            type="number"
-            value={view.xMax}
-            onChange={(e) =>
-              setView((v) => ({ ...v, xMax: Number(e.target.value) }))
-            }
-            style={{ width: 90 }}
-          />
-        </label>
-        <label>
-          yMin{" "}
-          <input
-            type="number"
-            value={view.yMin}
-            onChange={(e) =>
-              setView((v) => ({ ...v, yMin: Number(e.target.value) }))
-            }
-            style={{ width: 90 }}
-          />
-        </label>
-        <label>
-          yMax{" "}
-          <input
-            type="number"
-            value={view.yMax}
-            onChange={(e) =>
-              setView((v) => ({ ...v, yMax: Number(e.target.value) }))
-            }
-            style={{ width: 90 }}
-          />
-        </label>
-        <label>
-          xTick{" "}
-          <input
-            type="number"
-            min="0.1"
-            step="0.1"
-            value={view.xTick}
-            onChange={(e) =>
-              setView((v) => ({ ...v, xTick: Number(e.target.value) }))
-            }
-            style={{ width: 90 }}
-          />
-        </label>
-        <label>
-          yTick{" "}
-          <input
-            type="number"
-            min="0.1"
-            step="0.1"
-            value={view.yTick}
-            onChange={(e) =>
-              setView((v) => ({ ...v, yTick: Number(e.target.value) }))
-            }
-            style={{ width: 90 }}
-          />
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <input
-            type="checkbox"
-            checked={view.showGrid}
-            onChange={(e) =>
-              setView((v) => ({ ...v, showGrid: e.target.checked }))
-            }
-          />
-          grid
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <input
-            type="checkbox"
-            checked={view.showTicks}
-            onChange={(e) =>
-              setView((v) => ({ ...v, showTicks: e.target.checked }))
-            }
-          />
-          ticks
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <input
-            type="checkbox"
-            checked={view.snapToGrid}
-            onChange={(e) =>
-              setView((v) => ({ ...v, snapToGrid: e.target.checked }))
-            }
-          />
-          snap
-        </label>
-
-        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <input
-            type="checkbox"
-            checked={showPointLabels}
-            onChange={(e) => setShowPointLabels(e.target.checked)}
-          />
-          labels
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <input
-            type="radio"
-            name="tool"
-            checked={tool === "point"}
-            onChange={() => setTool("point")}
-          />
-          points
-        </label>
-
-        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <input
-            type="radio"
-            name="tool"
-            checked={tool === "segment"}
-            onChange={() => setTool("segment")}
-          />
-          segments
-        </label>
-
-        <label>
-          x label{" "}
-          <input
-            type="text"
-            value={view.xLabel}
-            onChange={(e) => setView((v) => ({ ...v, xLabel: e.target.value }))}
-            placeholder="e.g., Time"
-            style={{ width: 140 }}
-          />
-        </label>
-
-        <label>
-          x unit{" "}
-          <input
-            type="text"
-            value={view.xUnit}
-            onChange={(e) => setView((v) => ({ ...v, xUnit: e.target.value }))}
-            placeholder="e.g., s"
-            style={{ width: 90 }}
-          />
-        </label>
-
-        <label>
-          y label{" "}
-          <input
-            type="text"
-            value={view.yLabel}
-            onChange={(e) => setView((v) => ({ ...v, yLabel: e.target.value }))}
-            placeholder="e.g., Velocity"
-            style={{ width: 140 }}
-          />
-        </label>
-
-        <label>
-          y unit{" "}
-          <input
-            type="text"
-            value={view.yUnit}
-            onChange={(e) => setView((v) => ({ ...v, yUnit: e.target.value }))}
-            placeholder="e.g., m/s"
-            style={{ width: 90 }}
-          />
-        </label>
-
-        <div style={{ fontSize: 14, opacity: 0.8 }}>
-          points: {points.length} (right-click a point to delete)
-        </div>
         <button
-          onClick={() => setPoints([])}
-          disabled={points.length === 0}
+          onClick={() => setPanelOpen((v) => !v)}
           style={{
-            padding: "6px 10px",
+            width: "100%",
+            padding: "6px 8px",
             borderRadius: 6,
             border: "1px solid #999",
-            background: points.length === 0 ? "#f3f3f3" : "white",
-            cursor: points.length === 0 ? "not-allowed" : "pointer",
+            background: "white",
+            cursor: "pointer",
           }}
+          title={panelOpen ? "Collapse panel" : "Expand panel"}
         >
-          Delete all points
+          {panelOpen ? "⟨" : "⟩"}
         </button>
 
-        <div style={{ marginLeft: "auto", fontSize: 14, opacity: 0.8 }}>
-          {cursorWorld ? (
-            <span>
-              (x,y): ({cursorWorld.x}, {cursorWorld.y})
-            </span>
-          ) : (
-            <span>click on the graph to see world coords</span>
-          )}
-        </div>
+        {panelOpen && (
+          <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+            {/* Controls */}
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <label>
+                xMin{" "}
+                <input
+                  type="number"
+                  value={view.xMin}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, xMin: Number(e.target.value) }))
+                  }
+                  style={{ width: 90 }}
+                />
+              </label>
+              <label>
+                xMax{" "}
+                <input
+                  type="number"
+                  value={view.xMax}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, xMax: Number(e.target.value) }))
+                  }
+                  style={{ width: 90 }}
+                />
+              </label>
+              <label>
+                yMin{" "}
+                <input
+                  type="number"
+                  value={view.yMin}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, yMin: Number(e.target.value) }))
+                  }
+                  style={{ width: 90 }}
+                />
+              </label>
+              <label>
+                yMax{" "}
+                <input
+                  type="number"
+                  value={view.yMax}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, yMax: Number(e.target.value) }))
+                  }
+                  style={{ width: 90 }}
+                />
+              </label>
+              <label>
+                xTick{" "}
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  value={view.xTick}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, xTick: Number(e.target.value) }))
+                  }
+                  style={{ width: 90 }}
+                />
+              </label>
+              <label>
+                yTick{" "}
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  value={view.yTick}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, yTick: Number(e.target.value) }))
+                  }
+                  style={{ width: 90 }}
+                />
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={view.showGrid}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, showGrid: e.target.checked }))
+                  }
+                />
+                grid
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={view.showTicks}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, showTicks: e.target.checked }))
+                  }
+                />
+                ticks
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={view.snapToGrid}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, snapToGrid: e.target.checked }))
+                  }
+                />
+                snap
+              </label>
+
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={showPointLabels}
+                  onChange={(e) => setShowPointLabels(e.target.checked)}
+                />
+                labels
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="radio"
+                  name="tool"
+                  checked={tool === "point"}
+                  onChange={() => setTool("point")}
+                />
+                points
+              </label>
+
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="radio"
+                  name="tool"
+                  checked={tool === "segment"}
+                  onChange={() => setTool("segment")}
+                />
+                segments
+              </label>
+
+              <label>
+                x label{" "}
+                <input
+                  type="text"
+                  value={view.xLabel}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, xLabel: e.target.value }))
+                  }
+                  placeholder="e.g., Time"
+                  style={{ width: 140 }}
+                />
+              </label>
+
+              <label>
+                x unit{" "}
+                <input
+                  type="text"
+                  value={view.xUnit}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, xUnit: e.target.value }))
+                  }
+                  placeholder="e.g., s"
+                  style={{ width: 90 }}
+                />
+              </label>
+
+              <label>
+                y label{" "}
+                <input
+                  type="text"
+                  value={view.yLabel}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, yLabel: e.target.value }))
+                  }
+                  placeholder="e.g., Velocity"
+                  style={{ width: 140 }}
+                />
+              </label>
+
+              <label>
+                y unit{" "}
+                <input
+                  type="text"
+                  value={view.yUnit}
+                  onChange={(e) =>
+                    setView((v) => ({ ...v, yUnit: e.target.value }))
+                  }
+                  placeholder="e.g., m/s"
+                  style={{ width: 90 }}
+                />
+              </label>
+
+              <div style={{ fontSize: 14, opacity: 0.8 }}>
+                points: {points.length} (right-click a point to delete)
+              </div>
+              <button
+                onClick={() => setPoints([])}
+                disabled={points.length === 0}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #999",
+                  background: points.length === 0 ? "#f3f3f3" : "white",
+                  cursor: points.length === 0 ? "not-allowed" : "pointer",
+                }}
+              >
+                Delete all points
+              </button>
+
+              <div style={{ marginLeft: "auto", fontSize: 14, opacity: 0.8 }}>
+                {cursorWorld ? (
+                  <span>
+                    (x,y): ({cursorWorld.x}, {cursorWorld.y})
+                  </span>
+                ) : (
+                  <span>click on the graph to see world coords</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      <svg
-        ref={svgRef}
-        width={W}
-        height={H}
-        onPointerDown={onSvgPointerDown}
-        onPointerMove={onSvgPointerMove}
-        onPointerUp={onSvgPointerUp}
-        onPointerLeave={onSvgPointerUp}
-        onClick={onSvgClick}
-        style={{
-          border: "1px solid #ddd",
-          background: "white",
-          borderRadius: 8,
-          cursor: dragId ? "grabbing" : "crosshair",
-        }}
-      >
-        {/* Plot area background */}
-        <rect
-          x={inner.x}
-          y={inner.y}
-          width={inner.w}
-          height={inner.h}
-          fill="white"
-        />
+      {/* Graph Area */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <svg
+          ref={svgRef}
+          width={W}
+          height={H}
+          onPointerDown={onSvgPointerDown}
+          onPointerMove={onSvgPointerMove}
+          onPointerUp={onSvgPointerUp}
+          onPointerLeave={onSvgPointerUp}
+          style={{
+            border: "1px solid #ddd",
+            background: "white",
+            borderRadius: 8,
+            cursor: dragId ? "grabbing" : "crosshair",
+            display: "block",
+          }}
+        >
+          {/* svg Content */}
+          
+            {/* Plot area background */}
+            <rect
+              x={inner.x}
+              y={inner.y}
+              width={inner.w}
+              height={inner.h}
+              fill="white"
+            />
 
-        {/* Grid */}
-        {view.showGrid && (
-          <g opacity="0.25">
-            {gridLines.v.map((ln) => (
+            {/* Grid */}
+            {view.showGrid && (
+              <g opacity="0.25">
+                {gridLines.v.map((ln) => (
+                  <line
+                    key={`v-${ln.xWorld}`}
+                    x1={ln.xScreen}
+                    y1={inner.y}
+                    x2={ln.xScreen}
+                    y2={inner.y + inner.h}
+                    stroke="black"
+                    strokeWidth="1"
+                  />
+                ))}
+                {gridLines.h.map((ln) => (
+                  <line
+                    key={`h-${ln.yWorld}`}
+                    x1={inner.x}
+                    y1={ln.yScreen}
+                    x2={inner.x + inner.w}
+                    y2={ln.yScreen}
+                    stroke="black"
+                    strokeWidth="1"
+                  />
+                ))}
+              </g>
+            )}
+
+            {/* Axes */}
+            <g>
+              {/* x-axis */}
               <line
-                key={`v-${ln.xWorld}`}
-                x1={ln.xScreen}
+                x1={inner.x}
+                y1={xAxisY}
+                x2={inner.x + inner.w}
+                y2={xAxisY}
+                stroke="black"
+                strokeWidth="2"
+              />
+              {/* y-axis */}
+              <line
+                x1={yAxisX}
                 y1={inner.y}
-                x2={ln.xScreen}
+                x2={yAxisX}
                 y2={inner.y + inner.h}
                 stroke="black"
-                strokeWidth="1"
-              />
-            ))}
-            {gridLines.h.map((ln) => (
-              <line
-                key={`h-${ln.yWorld}`}
-                x1={inner.x}
-                y1={ln.yScreen}
-                x2={inner.x + inner.w}
-                y2={ln.yScreen}
-                stroke="black"
-                strokeWidth="1"
-              />
-            ))}
-          </g>
-        )}
-
-        {/* Axes */}
-        <g>
-          {/* x-axis */}
-          <line
-            x1={inner.x}
-            y1={xAxisY}
-            x2={inner.x + inner.w}
-            y2={xAxisY}
-            stroke="black"
-            strokeWidth="2"
-          />
-          {/* y-axis */}
-          <line
-            x1={yAxisX}
-            y1={inner.y}
-            x2={yAxisX}
-            y2={inner.y + inner.h}
-            stroke="black"
-            strokeWidth="2"
-          />
-        </g>
-
-        {/* Border for plot area */}
-        <rect
-          x={inner.x}
-          y={inner.y}
-          width={inner.w}
-          height={inner.h}
-          fill="none"
-          stroke="black"
-          strokeWidth="2"
-        />
-
-        {/* Segments */}
-        <g>
-          {segments.map((seg) => {
-            const a = pointById.get(seg.aId);
-            const b = pointById.get(seg.bId);
-            if (!a || !b) return null;
-
-            const A = worldToScreen({ x: a.x, y: a.y });
-            const B = worldToScreen({ x: b.x, y: b.y });
-
-            const isSelected = seg.id === selectedSegmentId;
-
-            return (
-              <line
-                key={seg.id}
-                x1={A.x}
-                y1={A.y}
-                x2={B.x}
-                y2={B.y}
-                stroke="black"
-                strokeWidth={isSelected ? 4 : 2}
-                style={{ cursor: "pointer" }}
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  setSelectedSegmentId(seg.id);
-                  setSelectedPointId(null);
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setSegments((prev) => prev.filter((s) => s.id !== seg.id));
-                  setSelectedSegmentId((cur) => (cur === seg.id ? null : cur));
-                }}
-              />
-            );
-          })}
-        </g>
-
-        {/* Segment drag preview */}
-        {segmentDrag &&
-          (() => {
-            const a = pointById.get(segmentDrag.startId);
-            if (!a) return null;
-
-            const A = worldToScreen({ x: a.x, y: a.y });
-            const B = worldToScreen({
-              x: segmentDrag.cursorWorld.x,
-              y: segmentDrag.cursorWorld.y,
-            });
-
-            return (
-              <line
-                x1={A.x}
-                y1={A.y}
-                x2={B.x}
-                y2={B.y}
-                stroke="black"
                 strokeWidth="2"
-                strokeDasharray="6 6"
-                opacity="0.6"
-                pointerEvents="none"
               />
-            );
-          })()}
+            </g>
 
-        {/* Points */}
-        <g>
-          {points.map((p, i) => {
-            const s = worldToScreen({ x: p.x, y: p.y });
-            const isSelected = p.id === selectedPointId;
-            const label = indexToLabel(i);
+            {/* Border for plot area */}
+            <rect
+              x={inner.x}
+              y={inner.y}
+              width={inner.w}
+              height={inner.h}
+              fill="none"
+              stroke="black"
+              strokeWidth="2"
+            />
 
-            return (
-              <g key={p.id}>
-                <circle
-                  cx={s.x}
-                  cy={s.y}
-                  r={6}
-                  fill="black"
-                  stroke={isSelected ? "black" : "none"}
-                  strokeWidth={isSelected ? 3 : 0}
-                  style={{ cursor: "grab" }}
-                  onPointerDown={(e) => onPointPointerDown(e, p.id)}
-                  onContextMenu={(e) => onPointContextMenu(e, p.id)}
-                />
+            {/* Segments */}
+            <g>
+              {segments.map((seg) => {
+                const a = pointById.get(seg.aId);
+                const b = pointById.get(seg.bId);
+                if (!a || !b) return null;
 
-                {showPointLabels && (
+                const A = worldToScreen({ x: a.x, y: a.y });
+                const B = worldToScreen({ x: b.x, y: b.y });
+
+                const isSelected = seg.id === selectedSegmentId;
+
+                return (
+                  <line
+                    key={seg.id}
+                    x1={A.x}
+                    y1={A.y}
+                    x2={B.x}
+                    y2={B.y}
+                    stroke="black"
+                    strokeWidth={isSelected ? 4 : 2}
+                    style={{ cursor: "pointer" }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      setSelectedSegmentId(seg.id);
+                      setSelectedPointId(null);
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setSegments((prev) =>
+                        prev.filter((s) => s.id !== seg.id),
+                      );
+                      setSelectedSegmentId((cur) =>
+                        cur === seg.id ? null : cur,
+                      );
+                    }}
+                  />
+                );
+              })}
+            </g>
+
+            {/* Segment drag preview */}
+            {segmentDrag &&
+              (() => {
+                const a = pointById.get(segmentDrag.startId);
+                if (!a) return null;
+
+                const A = worldToScreen({ x: a.x, y: a.y });
+                const B = worldToScreen({
+                  x: segmentDrag.cursorWorld.x,
+                  y: segmentDrag.cursorWorld.y,
+                });
+
+                return (
+                  <line
+                    x1={A.x}
+                    y1={A.y}
+                    x2={B.x}
+                    y2={B.y}
+                    stroke="black"
+                    strokeWidth="2"
+                    strokeDasharray="6 6"
+                    opacity="0.6"
+                    pointerEvents="none"
+                  />
+                );
+              })()}
+
+            {/* Points */}
+            <g>
+              {points.map((p, i) => {
+                const s = worldToScreen({ x: p.x, y: p.y });
+                const isSelected = p.id === selectedPointId;
+                const label = indexToLabel(i);
+
+                return (
+                  <g key={p.id}>
+                    <circle
+                      cx={s.x}
+                      cy={s.y}
+                      r={6}
+                      fill="black"
+                      stroke={isSelected ? "black" : "none"}
+                      strokeWidth={isSelected ? 3 : 0}
+                      style={{ cursor: "grab" }}
+                      onPointerDown={(e) => onPointPointerDown(e, p.id)}
+                      onContextMenu={(e) => onPointContextMenu(e, p.id)}
+                    />
+
+                    {showPointLabels && (
+                      <text
+                        x={s.x + 10}
+                        y={s.y - 10}
+                        fontSize="14"
+                        fontFamily="system-ui, sans-serif"
+                      >
+                        {label}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
+            </g>
+
+            {/* Tick labels */}
+            <g fontSize="12" fontFamily="system-ui, sans-serif">
+              {/* X tick labels */}
+              {gridLines.v.map((ln) => {
+                // Hide x-axis 0 label only in classic Q1 (we'll draw one shared "0")
+                if (isClassicQ1 && Math.abs(ln.xWorld) < 1e-9) return null;
+
+                const labelY = xAxisAtBottom
+                  ? inner.y + inner.h + 18 // bottom margin
+                  : clamp(xAxisY + 16, inner.y + 14, inner.y + inner.h - 4);
+
+                return (
                   <text
-                    x={s.x + 10}
-                    y={s.y - 10}
-                    fontSize="14"
-                    fontFamily="system-ui, sans-serif"
+                    key={`xt-${ln.xWorld}`}
+                    x={ln.xScreen}
+                    y={labelY}
+                    textAnchor="middle"
                   >
-                    {label}
+                    {Number(ln.xWorld.toFixed(6))}
                   </text>
-                )}
+                );
+              })}
+
+              {/* Y tick labels */}
+              {gridLines.h.map((ln) => {
+                // Hide y-axis 0 label only in classic Q1 (we'll draw one shared "0")
+                if (isClassicQ1 && Math.abs(ln.yWorld) < 1e-9) return null;
+
+                const labelX = yAxisAtLeft
+                  ? inner.x - 8 // left margin
+                  : clamp(yAxisX - 8, inner.x + 10, inner.x + inner.w - 10);
+
+                return (
+                  <text
+                    key={`yt-${ln.yWorld}`}
+                    x={labelX}
+                    y={ln.yScreen + 4}
+                    textAnchor="end"
+                  >
+                    {Number(ln.yWorld.toFixed(6))}
+                  </text>
+                );
+              })}
+
+              {/* Single shared 0 label only when both mins are exactly 0 */}
+              {isClassicQ1 && (
+                <text
+                  x={inner.x - 8}
+                  y={inner.y + inner.h + 18}
+                  textAnchor="end"
+                >
+                  0
+                </text>
+              )}
+            </g>
+
+            {/* Axis labels */}
+            <g fontFamily="system-ui, sans-serif" fontSize="14">
+              {/* X axis label (centered below plot) */}
+              {xAxisText && (
+                <text
+                  x={inner.x + inner.w / 2}
+                  y={inner.y + inner.h + 44}
+                  textAnchor="middle"
+                >
+                  {xAxisText}
+                </text>
+              )}
+
+              {/* Y axis label (rotated, centered left of plot) */}
+              {yAxisText && (
+                <text
+                  transform={`translate(${inner.x - 44}, ${inner.y + inner.h / 2}) rotate(-90)`}
+                  textAnchor="middle"
+                >
+                  {yAxisText}
+                </text>
+              )}
+            </g>
+
+            {/* Axis tick marks (hash marks) */}
+            {view.showTicks && (
+              <g>
+                {/* ticks on x-axis (vertical little lines) */}
+                {gridLines.v.map((ln) => (
+                  <line
+                    key={`x-tick-${ln.xWorld}`}
+                    x1={ln.xScreen}
+                    y1={xAxisY - 6}
+                    x2={ln.xScreen}
+                    y2={xAxisY + 6}
+                    stroke="black"
+                    strokeWidth="2"
+                  />
+                ))}
+
+                {/* ticks on y-axis (horizontal little lines) */}
+                {gridLines.h.map((ln) => (
+                  <line
+                    key={`y-tick-${ln.yWorld}`}
+                    x1={yAxisX - 6}
+                    y1={ln.yScreen}
+                    x2={yAxisX + 6}
+                    y2={ln.yScreen}
+                    stroke="black"
+                    strokeWidth="2"
+                  />
+                ))}
               </g>
-            );
-          })}
-        </g>
-
-        {/* Tick labels */}
-        <g fontSize="12" fontFamily="system-ui, sans-serif">
-          {/* X tick labels */}
-          {gridLines.v.map((ln) => {
-            // Hide x-axis 0 label only in classic Q1 (we'll draw one shared "0")
-            if (isClassicQ1 && Math.abs(ln.xWorld) < 1e-9) return null;
-
-            const labelY = xAxisAtBottom
-              ? inner.y + inner.h + 18 // bottom margin
-              : clamp(xAxisY + 16, inner.y + 14, inner.y + inner.h - 4);
-
-            return (
-              <text
-                key={`xt-${ln.xWorld}`}
-                x={ln.xScreen}
-                y={labelY}
-                textAnchor="middle"
-              >
-                {Number(ln.xWorld.toFixed(6))}
-              </text>
-            );
-          })}
-
-          {/* Y tick labels */}
-          {gridLines.h.map((ln) => {
-            // Hide y-axis 0 label only in classic Q1 (we'll draw one shared "0")
-            if (isClassicQ1 && Math.abs(ln.yWorld) < 1e-9) return null;
-
-            const labelX = yAxisAtLeft
-              ? inner.x - 8 // left margin
-              : clamp(yAxisX - 8, inner.x + 10, inner.x + inner.w - 10);
-
-            return (
-              <text
-                key={`yt-${ln.yWorld}`}
-                x={labelX}
-                y={ln.yScreen + 4}
-                textAnchor="end"
-              >
-                {Number(ln.yWorld.toFixed(6))}
-              </text>
-            );
-          })}
-
-          {/* Single shared 0 label only when both mins are exactly 0 */}
-          {isClassicQ1 && (
-            <text x={inner.x - 8} y={inner.y + inner.h + 18} textAnchor="end">
-              0
-            </text>
-          )}
-        </g>
-
-        {/* Axis labels */}
-        <g fontFamily="system-ui, sans-serif" fontSize="14">
-          {/* X axis label (centered below plot) */}
-          {xAxisText && (
-            <text
-              x={inner.x + inner.w / 2}
-              y={inner.y + inner.h + 44}
-              textAnchor="middle"
-            >
-              {xAxisText}
-            </text>
-          )}
-
-          {/* Y axis label (rotated, centered left of plot) */}
-          {yAxisText && (
-            <text
-              transform={`translate(${inner.x - 44}, ${inner.y + inner.h / 2}) rotate(-90)`}
-              textAnchor="middle"
-            >
-              {yAxisText}
-            </text>
-          )}
-        </g>
-
-        {/* Axis tick marks (hash marks) */}
-        {view.showTicks && (
-          <g>
-            {/* ticks on x-axis (vertical little lines) */}
-            {gridLines.v.map((ln) => (
-              <line
-                key={`x-tick-${ln.xWorld}`}
-                x1={ln.xScreen}
-                y1={xAxisY - 6}
-                x2={ln.xScreen}
-                y2={xAxisY + 6}
-                stroke="black"
-                strokeWidth="2"
-              />
-            ))}
-
-            {/* ticks on y-axis (horizontal little lines) */}
-            {gridLines.h.map((ln) => (
-              <line
-                key={`y-tick-${ln.yWorld}`}
-                x1={yAxisX - 6}
-                y1={ln.yScreen}
-                x2={yAxisX + 6}
-                y2={ln.yScreen}
-                stroke="black"
-                strokeWidth="2"
-              />
-            ))}
-          </g>
-        )}
-      </svg>
+            )}
+          
+        </svg>
+      </div>
     </div>
   );
 }
