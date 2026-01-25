@@ -26,7 +26,7 @@ export default function GraphCanvas() {
   const [segments, setSegments] = useState([]); // {id, aId, bId}
   const [selectedSegmentId, setSelectedSegmentId] = useState(null);
   const [segmentDrag, setSegmentDrag] = useState(null);
-  
+
   const [tool, setTool] = useState("point"); // "point" | "segment"
 
   // --- Viewport / graph settings (world units) ---
@@ -210,7 +210,7 @@ export default function GraphCanvas() {
     }
 
     return bestId;
-}
+  }
 
   function onSvgPointerDown(e) {
     // Only left-click / primary pointer
@@ -221,7 +221,7 @@ export default function GraphCanvas() {
 
     if (tool === "segment") {
       //clicking empty space cancels pending segment
-      
+
       setSegmentDrag(null);
       return;
     }
@@ -238,36 +238,35 @@ export default function GraphCanvas() {
   }
 
   function onPointPointerDown(e, pointId) {
-  e.stopPropagation();
-  if (e.button !== 0) return;
+    e.stopPropagation();
+    if (e.button !== 0) return;
 
-  setSelectedPointId(pointId);
-  setSelectedSegmentId(null);
+    setSelectedPointId(pointId);
+    setSelectedSegmentId(null);
 
-  // Segment tool: start drag-preview segment from this point
-  if (tool === "segment") {
-    const { sx, sy } = getSvgPointFromEvent(e);
-    const wpt = screenToWorld({ x: sx, y: sy });
+    // Segment tool: start drag-preview segment from this point
+    if (tool === "segment") {
+      const { sx, sy } = getSvgPointFromEvent(e);
+      const wpt = screenToWorld({ x: sx, y: sy });
 
-    setSegmentDrag({ startId: pointId, cursorWorld: wpt });
+      setSegmentDrag({ startId: pointId, cursorWorld: wpt });
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      return;
+    }
+
+    // Point tool: drag the point
+    setDragId(pointId);
     e.currentTarget.setPointerCapture?.(e.pointerId);
-    return;
   }
-
-  // Point tool: drag the point
-  setDragId(pointId);
-  e.currentTarget.setPointerCapture?.(e.pointerId);
-}
-
 
   function onSvgPointerMove(e) {
     const { sx, sy } = getSvgPointFromEvent(e);
-    
+
     //segment preview drag
     if (segmentDrag) {
       if (!isInsidePlotArea(sx, sy)) return;
       const wpt = screenToWorld({ x: sx, y: sy });
-      setSegmentDrag((cur) => (cur ? {...cur, cursorWorld: wpt } : cur));
+      setSegmentDrag((cur) => (cur ? { ...cur, cursorWorld: wpt } : cur));
       return;
     }
 
@@ -283,68 +282,73 @@ export default function GraphCanvas() {
     );
   }
 
- function onSvgPointerUp(e) {
-  const { sx, sy } = e && svgRef.current ? getSvgPointFromEvent(e) : { sx: null, sy: null };
+  function onSvgPointerUp(e) {
+    const { sx, sy } =
+      e && svgRef.current ? getSvgPointFromEvent(e) : { sx: null, sy: null };
 
-  // Finish segment drag
-  if (segmentDrag && sx != null && sy != null) {
-    const endId = findNearestPointId(sx, sy, 14); // 14px feels good
-    const startId = segmentDrag.startId;
+    // Finish segment drag
+    if (segmentDrag && sx != null && sy != null) {
+      const endId = findNearestPointId(sx, sy, 14); // 14px feels good
+      const startId = segmentDrag.startId;
 
-    if (endId && endId !== startId) {
-      const exists = segments.some(
-        (s) =>
-          (s.aId === startId && s.bId === endId) ||
-          (s.aId === endId && s.bId === startId)
-      );
+      if (endId && endId !== startId) {
+        const exists = segments.some(
+          (s) =>
+            (s.aId === startId && s.bId === endId) ||
+            (s.aId === endId && s.bId === startId),
+        );
 
-      if (!exists) {
-        const id = makeId();
-        setSegments((prev) => [...prev, { id, aId: startId, bId: endId }]);
-        setSelectedSegmentId(id);
+        if (!exists) {
+          const id = makeId();
+          setSegments((prev) => [...prev, { id, aId: startId, bId: endId }]);
+          setSelectedSegmentId(id);
+        }
       }
+
+      setSegmentDrag(null);
+      return;
     }
 
-    setSegmentDrag(null);
-    return;
+    // Finish point drag
+    if (dragId) setDragId(null);
   }
-
-  // Finish point drag
-  if (dragId) setDragId(null);
-}
-
 
   //simple right-click delete point
   function onPointContextMenu(e, pointId) {
     e.preventDefault();
     setPoints((prev) => prev.filter((p) => p.id !== pointId));
-    setSegments((prev) => prev.filter((s) => s.aId !== pointId && s.bId !== pointId));
+    setSegments((prev) =>
+      prev.filter((s) => s.aId !== pointId && s.bId !== pointId),
+    );
     setSelectedPointId((cur) => (cur === pointId ? null : cur));
-    
   }
 
   //---labeling of points logic---
 
   useEffect(() => {
     function onKeyDown(e) {
-    if (e.key !== "Delete" && e.key !== "Backspace") return;
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
 
-    if (selectedPointId) {
-      e.preventDefault();
-      setPoints((prev) => prev.filter((p) => p.id !== selectedPointId));
-      // also remove any segments connected to that point
-      setSegments((prev) => prev.filter((s) => s.aId !== selectedPointId && s.bId !== selectedPointId));
-      setSelectedPointId(null);
-      return;
-    }
+      if (selectedPointId) {
+        e.preventDefault();
+        setPoints((prev) => prev.filter((p) => p.id !== selectedPointId));
+        // also remove any segments connected to that point
+        setSegments((prev) =>
+          prev.filter(
+            (s) => s.aId !== selectedPointId && s.bId !== selectedPointId,
+          ),
+        );
+        setSelectedPointId(null);
+        return;
+      }
 
-    if (selectedSegmentId) {
-      e.preventDefault();
-      setSegments((prev) => prev.filter((s) => s.id !== selectedSegmentId));
-      setSelectedSegmentId(null);
-      return;
+      if (selectedSegmentId) {
+        e.preventDefault();
+        setSegments((prev) => prev.filter((s) => s.id !== selectedSegmentId));
+        setSelectedSegmentId(null);
+        return;
+      }
     }
-  }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -499,7 +503,6 @@ export default function GraphCanvas() {
           />
           segments
         </label>
-
 
         <label>
           x label{" "}
@@ -697,27 +700,31 @@ export default function GraphCanvas() {
         </g>
 
         {/* Segment drag preview */}
-        {segmentDrag && (() => {
-          const a = pointById.get(segmentDrag.startId);
-          if (!a) return null;
+        {segmentDrag &&
+          (() => {
+            const a = pointById.get(segmentDrag.startId);
+            if (!a) return null;
 
-          const A = worldToScreen({ x: a.x, y: a.y });
-          const B = worldToScreen({ x: segmentDrag.cursorWorld.x, y: segmentDrag.cursorWorld.y });
+            const A = worldToScreen({ x: a.x, y: a.y });
+            const B = worldToScreen({
+              x: segmentDrag.cursorWorld.x,
+              y: segmentDrag.cursorWorld.y,
+            });
 
-          return (
-            <line
-              x1={A.x}
-              y1={A.y}
-              x2={B.x}
-              y2={B.y}
-              stroke="black"
-              strokeWidth="2"
-              strokeDasharray="6 6"
-              opacity="0.6"
-              pointerEvents="none"
-            />
-          );
-        })()}
+            return (
+              <line
+                x1={A.x}
+                y1={A.y}
+                x2={B.x}
+                y2={B.y}
+                stroke="black"
+                strokeWidth="2"
+                strokeDasharray="6 6"
+                opacity="0.6"
+                pointerEvents="none"
+              />
+            );
+          })()}
 
         {/* Points */}
         <g>
