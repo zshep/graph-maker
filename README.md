@@ -1,16 +1,103 @@
-# React + Vite
+Graph Maker for Teachers
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A lightweight, browser-based graphing tool designed for teachers who need clean, customizable graphs for homework, quizzes, tests, and classwork.
 
-Currently, two official plugins are available:
+This app focuses on clarity, control, and classroom realism rather than advanced CAS features.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+🚀 Live Demo
 
-## React Compiler
+(Once GitHub Pages is set up, put the link here)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+✨ Features
+Graph setup
 
-## Expanding the ESLint configuration
+4-quadrant or Quadrant I graphs
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Custom x/y min & max
+
+Adjustable tick spacing
+
+Grid on/off
+
+Axis tick marks on/off
+
+Optional snap-to-grid
+
+Axis labeling
+
+Custom x-axis and y-axis labels
+
+Optional units (e.g. Time (s), Velocity (m/s))
+
+Leave labels blank for pure math graphs
+
+Points
+
+Click to add points
+
+Drag points to reposition
+
+Optional automatic labeling (A, B, C, …)
+
+Right-click or Delete key to remove points
+
+Delete all points with one click
+
+Segments
+
+Create segments by click-dragging from a point
+
+Segment preview while dragging
+
+Solid or dashed segment styles
+
+Multiple segments on the same graph
+
+Right-click or Delete key to remove segments
+
+Presets
+
+Save and load graph configuration presets
+
+Quickly reuse common classroom graph setups
+
+🧠 Design Philosophy
+
+This tool was built with real classroom use in mind:
+
+Fast setup for common graph types
+
+Minimal visual clutter
+
+No login, no backend, no distractions
+
+All data stays local in the browser
+
+🛠 Tech Stack
+
+React
+
+Vite
+
+SVG for rendering
+
+No backend (frontend-only)
+
+🧪 Running Locally
+npm install
+npm run dev
+
+
+Then open the local dev URL shown in the terminal.
+
+📦 Deployment
+
+This project is designed to run easily on GitHub Pages.
+
+📣 Feedback Welcome
+
+If you’re a teacher and have suggestions, pain points, or feature requests, feedback is very welcome — especially around classroom usability.
+
+📄 License
+
+MIT License
