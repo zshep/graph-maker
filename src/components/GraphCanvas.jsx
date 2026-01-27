@@ -142,6 +142,7 @@ export default function GraphCanvas() {
   const [segments, setSegments] = useState([]); // {id, aId, bId}
   const [selectedSegmentId, setSelectedSegmentId] = useState(null);
   const [segmentDrag, setSegmentDrag] = useState(null);
+  const [newSegmentStyle, setNewSegmentStyle] = useState("solid"); // solid | dashed
   const [tool, setTool] = useState("point"); // "point" | "segment"
 
   const [panelOpen, setPanelOpen] = useState(true);
@@ -434,7 +435,10 @@ export default function GraphCanvas() {
 
         if (!exists) {
           const id = makeId();
-          setSegments((prev) => [...prev, { id, aId: startId, bId: endId }]);
+          setSegments((prev) => [
+            ...prev,
+            { id, aId: startId, bId: endId, style: newSegmentStyle },
+          ]);
           setSelectedSegmentId(id);
         }
       }
@@ -445,6 +449,19 @@ export default function GraphCanvas() {
 
     // Finish point drag
     if (dragId) setDragId(null);
+  }
+
+  //Helper for Toggle Style of Segment
+  function toggleSelectedSegmentStyle() {
+    if (!selectedSegmentId) return;
+
+    setSegments((prev) =>
+      prev.map((s) => {
+        if (s.id !== selectedSegmentId) return s;
+        const next = s.style === "dashed" ? "solid" : "dashed";
+        return { ...s, style: next };
+      }),
+    );
   }
 
   //simple right-click delete point
@@ -553,7 +570,6 @@ export default function GraphCanvas() {
 
   return (
     <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
-      
       {/* Control Panel */}
       <div
         style={{
@@ -591,9 +607,8 @@ export default function GraphCanvas() {
             }}
           >
             {/* Controls */}
-
-            {/* Presets */}
             <div style={{ display: "grid", gap: 14 }}>
+              {/* Presets */}
               <fieldset style={styles.section}>
                 <legend style={styles.legend}>Presets</legend>
 
@@ -969,6 +984,62 @@ export default function GraphCanvas() {
                     points: {points.length} (right-click a point to delete)
                   </div>
 
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <div style={{ fontSize: 13, opacity: 0.85 }}>
+                      New segments
+                    </div>
+                    <div
+                      style={{ display: "flex", gap: 14, alignItems: "center" }}
+                    >
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="segStyle"
+                          checked={newSegmentStyle === "solid"}
+                          onChange={() => setNewSegmentStyle("solid")}
+                        />
+                        solid
+                      </label>
+
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="segStyle"
+                          checked={newSegmentStyle === "dashed"}
+                          onChange={() => setNewSegmentStyle("dashed")}
+                        />
+                        dashed
+                      </label>
+                    </div>
+                    {selectedSegmentId && (
+                      <button
+                        onClick={toggleSelectedSegmentStyle}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 6,
+                          border: "1px solid #999",
+                          background: "white",
+                          cursor: "pointer",
+                          justifySelf: "start",
+                        }}
+                      >
+                        Toggle selected segment style
+                      </button>
+                    )}
+                  </div>
+
                   <button
                     onClick={() => setPoints([])}
                     disabled={points.length === 0}
@@ -1111,6 +1182,7 @@ export default function GraphCanvas() {
                   y2={B.y}
                   stroke="black"
                   strokeWidth={isSelected ? 4 : 2}
+                  strokeDasharray={seg.style === "dashed" ? "6 6" : undefined}
                   style={{ cursor: "pointer" }}
                   onPointerDown={(e) => {
                     e.stopPropagation();
