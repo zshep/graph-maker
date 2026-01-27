@@ -1,5 +1,86 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 
+// ---local storage logic for preset saves
+const PRESET_STORAGE_KEY = "graphMaker.presets.v1";
+
+// presets
+const BUILTIN_PRESETS = [
+  {
+    id: "builtin-q1",
+    name: "Quadrant I (0→10)",
+    view: {
+      xMin: 0,
+      xMax: 10,
+      yMin: 0,
+      yMax: 10,
+      xTick: 1,
+      yTick: 1,
+      xLabel: "",
+      xUnit: "",
+      yLabel: "",
+      yUnit: "",
+      showGrid: true,
+      showTicks: true,
+      snapToGrid: false,
+    },
+    showPointLabels: true,
+  },
+  {
+    id: "builtin-4q",
+    name: "4-Quadrant (-10→10)",
+    view: {
+      xMin: -10,
+      xMax: 10,
+      yMin: -10,
+      yMax: 10,
+      xTick: 1,
+      yTick: 1,
+      xLabel: "",
+      xUnit: "",
+      yLabel: "",
+      yUnit: "",
+      showGrid: true,
+      showTicks: true,
+      snapToGrid: false,
+    },
+    showPointLabels: true,
+  },
+  {
+    id: "builtin-physics",
+    name: "Physics (t vs x)",
+    view: {
+      xMin: 0,
+      xMax: 10,
+      yMin: 0,
+      yMax: 50,
+      xTick: 1,
+      yTick: 5,
+      xLabel: "Time",
+      xUnit: "s",
+      yLabel: "Position",
+      yUnit: "m",
+      showGrid: true,
+      showTicks: true,
+      snapToGrid: false,
+    },
+    showPointLabels: true,
+  },
+];
+
+function loadUserPresets() {
+  try {
+    const raw = localStorage.getItem(PRESET_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveUserPresets(presets) {
+  localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+}
+
 //styles
 const styles = {
   section: {
@@ -64,6 +145,13 @@ export default function GraphCanvas() {
   const [tool, setTool] = useState("point"); // "point" | "segment"
 
   const [panelOpen, setPanelOpen] = useState(true);
+
+  // --- preset states----
+  const [userPresets, setUserPresets] = useState(() => loadUserPresets());
+  const [selectedPresetId, setSelectedPresetId] = useState(
+    BUILTIN_PRESETS[0].id,
+  );
+  const [newPresetName, setNewPresetName] = useState("");
 
   // --- Viewport / graph settings (world units) ---
   const [view, setView] = useState({
@@ -411,8 +499,61 @@ export default function GraphCanvas() {
     return s;
   }
 
+  //--- Preset logic---
+  useEffect(() => {
+    saveUserPresets(userPresets);
+  }, [userPresets]);
+
+  // final preset lists
+  const allPresets = useMemo(() => {
+    // user presets should not collide with prebuilt presets
+    return [...BUILTIN_PRESETS, ...userPresets];
+  }, [userPresets]);
+
+  const selectedPreset = useMemo(
+    () => allPresets.find((p) => p.id === selectedPresetId) || allPresets[0],
+    [allPresets, selectedPresetId],
+  );
+
+  function applyPreset(preset) {
+    if (!preset) return;
+    setView(preset.view);
+    setShowPointLabels(!!preset.showPointLabels);
+
+    // optional: clear selection / cancel drags so it feels clean
+    setSelectedPointId(null);
+    setSelectedSegmentId(null);
+    setDragId(null);
+    setSegmentDrag(null);
+  }
+
+  function onSavePreset() {
+    const name = newPresetName.trim();
+    if (!name) return;
+
+    const preset = {
+      id: `user-${makeId()}`,
+      name,
+      view,
+      showPointLabels,
+    };
+
+    setUserPresets((prev) => [preset, ...prev]);
+    setSelectedPresetId(preset.id);
+    setNewPresetName("");
+  }
+
+  function onDeleteSelectedPreset() {
+    // only delete user presets
+    if (!selectedPresetId.startsWith("user-")) return;
+
+    setUserPresets((prev) => prev.filter((p) => p.id !== selectedPresetId));
+    setSelectedPresetId(BUILTIN_PRESETS[0].id);
+  }
+
   return (
     <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
+      
       {/* Control Panel */}
       <div
         style={{
@@ -440,9 +581,132 @@ export default function GraphCanvas() {
         </button>
 
         {panelOpen && (
-          <div style={{ marginTop: 12, display: "grid", gap: 12, maxHeight: H, overflowY: "auto" }}>
+          <div
+            style={{
+              marginTop: 12,
+              display: "grid",
+              gap: 12,
+              maxHeight: H,
+              overflowY: "auto",
+            }}
+          >
             {/* Controls */}
+
+            {/* Presets */}
             <div style={{ display: "grid", gap: 14 }}>
+              <fieldset style={styles.section}>
+                <legend style={styles.legend}>Presets</legend>
+
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label>
+                    Choose Preset
+                    <select
+                      value={selectedPresetId}
+                      onChange={(e) => setSelectedPresetId(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "6px 8px",
+                        borderRadius: 6,
+                      }}
+                    >
+                      <optgroup label="Built-in">
+                        {BUILTIN_PRESETS.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </optgroup>
+
+                      <optgroup label="Saved">
+                        {userPresets.length === 0 ? (
+                          <option value="__none" disabled>
+                            (none yet)
+                          </option>
+                        ) : (
+                          userPresets.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))
+                        )}
+                      </optgroup>
+                    </select>
+                  </label>
+
+                  <div
+                    style={{ display: "flex", gap: 10, alignItems: "center" }}
+                  >
+                    <button
+                      onClick={() => applyPreset(selectedPreset)}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: "1px solid #999",
+                        background: "white",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Load
+                    </button>
+
+                    <button
+                      onClick={onDeleteSelectedPreset}
+                      disabled={!selectedPresetId.startsWith("user-")}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: "1px solid #999",
+                        background: !selectedPresetId.startsWith("user-")
+                          ? "#f3f3f3"
+                          : "white",
+                        cursor: !selectedPresetId.startsWith("user-")
+                          ? "not-allowed"
+                          : "pointer",
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto",
+                      gap: 10,
+                    }}
+                  >
+                    <input
+                      type="text"
+                      value={newPresetName}
+                      onChange={(e) => setNewPresetName(e.target.value)}
+                      placeholder="Save current as…"
+                      style={{
+                        padding: "6px 8px",
+                        borderRadius: 6,
+                        border: "1px solid #bbb",
+                      }}
+                    />
+                    <button
+                      onClick={onSavePreset}
+                      disabled={newPresetName.trim() === ""}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: "1px solid #999",
+                        background:
+                          newPresetName.trim() === "" ? "#f3f3f3" : "white",
+                        cursor:
+                          newPresetName.trim() === ""
+                            ? "not-allowed"
+                            : "pointer",
+                      }}
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </fieldset>
+
               {/* Grid Settings */}
               <fieldset style={styles.section}>
                 <legend style={styles.legend}>Graph</legend>

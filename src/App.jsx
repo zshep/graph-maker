@@ -3,7 +3,7 @@ import GraphCanvas from "./components/GraphCanvas"
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  
 
   return (
    <div style={{ padding: 16, fontFamily: "system-ui, sans-serif" }}>
