@@ -47,7 +47,7 @@ const BUILTIN_PRESETS = [
   },
   {
     id: "builtin-physics",
-    name: "Physics (t vs x)",
+    name: "Physics (x vs t)",
     view: {
       xMin: 0,
       xMax: 10,
