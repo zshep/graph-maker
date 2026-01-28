@@ -47,7 +47,7 @@ const BUILTIN_PRESETS = [
   },
   {
     id: "builtin-physics",
-    name: "Physics (x vs t)",
+    name: "Physics (v vs t)",
     view: {
       xMin: 0,
       xMax: 10,
@@ -57,8 +57,8 @@ const BUILTIN_PRESETS = [
       yTick: 5,
       xLabel: "Time",
       xUnit: "s",
-      yLabel: "Position",
-      yUnit: "m",
+      yLabel: "Velocity",
+      yUnit: "m/s",
       showGrid: true,
       showTicks: true,
       snapToGrid: false,
