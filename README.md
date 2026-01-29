@@ -1,103 +1,105 @@
-Graph Maker for Teachers
+# Graph Maker for Teachers
 
 A lightweight, browser-based graphing tool designed for teachers who need clean, customizable graphs for homework, quizzes, tests, and classwork.
 
 This app focuses on clarity, control, and classroom realism rather than advanced CAS features.
 
-🚀 Live Demo
+## 🚀 Live Demo
 
-(Once GitHub Pages is set up, put the link here)
+  https://zshep.github.io/graph-maker/ 
 
-✨ Features
-Graph setup
+## ✨ Features
+### Graph setup
 
-4-quadrant or Quadrant I graphs
+- 4-quadrant or Quadrant I graphs
 
-Custom x/y min & max
+- Custom x/y min & max
 
-Adjustable tick spacing
+- Adjustable tick spacing
 
-Grid on/off
+- Grid on/off
 
-Axis tick marks on/off
+- Axis tick marks on/off
 
-Optional snap-to-grid
+- Optional snap-to-grid
 
-Axis labeling
+### Axis labeling
 
-Custom x-axis and y-axis labels
+- Custom x-axis and y-axis labels
 
-Optional units (e.g. Time (s), Velocity (m/s))
+- Optional units (e.g. Time (s), Velocity (m/s))
 
-Leave labels blank for pure math graphs
+- ave labels blank for pure math graphs
 
-Points
+### Points 
 
-Click to add points
+- Click to add points
 
-Drag points to reposition
+- Drag points to reposition
 
-Optional automatic labeling (A, B, C, …)
+- Optional automatic labeling (A, B, C, …)
 
-Right-click or Delete key to remove points
+- Right-click or Delete key to remove points
 
-Delete all points with one click
+- Delete all points with one click
 
-Segments
+### Segments
 
-Create segments by click-dragging from a point
+- Create segments by click-dragging from a point
 
-Segment preview while dragging
+- Segment preview while dragging
 
-Solid or dashed segment styles
+- Solid or dashed segment styles
 
-Multiple segments on the same graph
+- Multiple segments on the same graph
 
-Right-click or Delete key to remove segments
+- Right-click or Delete key to remove segments
 
-Presets
+### Presets
 
-Save and load graph configuration presets
+- Save and load graph configuration presets
 
-Quickly reuse common classroom graph setups
+- Quickly reuse common classroom graph setups
 
-🧠 Design Philosophy
+## 🧠 Design Philosophy
 
 This tool was built with real classroom use in mind:
 
-Fast setup for common graph types
+- Fast setup for common graph types
 
-Minimal visual clutter
+- Minimal visual clutter
 
-No login, no backend, no distractions
+- No login, no backend, no distractions
 
-All data stays local in the browser
+- All data stays local in the browser
 
-🛠 Tech Stack
+## 🛠 Tech Stack
 
-React
+- React
 
-Vite
+- Vite
 
-SVG for rendering
+- SVG for rendering
 
-No backend (frontend-only)
+- No backend (frontend-only)
 
-🧪 Running Locally
+## 🧪 Running Locally
+```bash
 npm install
 npm run dev
+```
 
 
 Then open the local dev URL shown in the terminal.
 
-📦 Deployment
+## 📦 Deployment
 
-This project is designed to run easily on GitHub Pages.
+This project is designed to run easily on **GitHub Pages**.
 
-📣 Feedback Welcome
+## 📣 Feedback Welcome
 
 If you’re a teacher and have suggestions, pain points, or feature requests, feedback is very welcome — especially around classroom usability.
 
-📄 License
+## 📄 License
 
 MIT License
