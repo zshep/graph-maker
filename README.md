@@ -4,11 +4,11 @@ A lightweight, browser-based graphing tool designed for teachers who need clean,
 
 This app focuses on clarity, control, and classroom realism rather than advanced CAS features.
 
-## 🚀 Live Demo
+## Live Demo
 
   https://zshep.github.io/graph-maker/ 
 
-## ✨ Features
+##  Features
 ### Graph setup
 
 - 4-quadrant or Quadrant I graphs
@@ -61,7 +61,7 @@ This app focuses on clarity, control, and classroom realism rather than advanced
 
 - Quickly reuse common classroom graph setups
 
-## 🧠 Design Philosophy
+## Design Philosophy
 
 This tool was built with real classroom use in mind:
 
@@ -73,7 +73,7 @@ This tool was built with real classroom use in mind:
 
 - All data stays local in the browser
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - React
 
@@ -83,7 +83,7 @@ This tool was built with real classroom use in mind:
 
 - No backend (frontend-only)
 
-## 🧪 Running Locally
+## Running Locally
 ```bash
 npm install
 npm run dev
@@ -92,14 +92,14 @@ npm run dev
 
 Then open the local dev URL shown in the terminal.
 
-## 📦 Deployment
+## Deployment
 
 This project is designed to run easily on **GitHub Pages**.
 
-## 📣 Feedback Welcome
+## Feedback Welcome
 
 If you’re a teacher and have suggestions, pain points, or feature requests, feedback is very welcome — especially around classroom usability.
 
-## 📄 License
+## License
 
 MIT License
