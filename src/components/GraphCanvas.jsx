@@ -114,7 +114,26 @@ const styles = {
     alignItems: "center",
     justifyContent: "start",
   },
-  hint: {},
+  hint: {
+    width: 900,
+    background: "#f8f9fb",
+    border: "1px solid #d6dbe3",
+    borderRadius: 8,
+    padding: "10px 12px",
+    fontSize: 14,
+    lineHeight: 1.4,
+    color: "#333",
+    boxSizing: "border-box",
+  },
+
+  hintTitle: {
+    margin: "4px 0 4px 0",
+    fontWeight: 600,
+  },
+
+  hintText: {
+    margin: 0,
+  },
 };
 
 /**
@@ -445,7 +464,7 @@ export default function GraphCanvas() {
       }
 
       setSegmentDrag(null);
-      
+
       return;
     }
 
@@ -466,7 +485,7 @@ export default function GraphCanvas() {
     );
   }
 
-   // show/hide hint function for segment making
+  // show/hide hint function for segment making
   function handleCreateSegment() {
     setShowHint(false);
   }
@@ -480,8 +499,6 @@ export default function GraphCanvas() {
     );
     setSelectedPointId((cur) => (cur === pointId ? null : cur));
   }
-
- 
 
   //---labeling of points logic---
 
@@ -1381,22 +1398,29 @@ export default function GraphCanvas() {
             </g>
           )}
         </svg>
-      </div>
 
-     
+        {/* Segemnt Hint */}
+        {showHint && (
+          <div style={styles.hint}>
+            <p style={styles.hintTitle}>To move a point:</p>
+            <p style={styles.hintText}>
+              Choose points under Tools, then click and drag
+              
+            </p>
+            <p style={styles.hintTitle}>To create a segment:</p>
+            <p style={styles.hintText}>
+              Create two points, choose Segment under Tools, then click and drag
+              from one point to another.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 /*
- { Create segment Hint }
-      {showHint && ( 
-      <div style={styles.hint}>
-        <p>To Create a Segment:</p>
-        <p>Create two points. Select segments undertools. Click and drag from one point to another</p>
-
-      </div>
-      )}
+ 
 
 
 
