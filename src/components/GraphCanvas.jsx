@@ -114,6 +114,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "start",
   },
+  hint: {},
 };
 
 /**
@@ -144,8 +145,8 @@ export default function GraphCanvas() {
   const [segmentDrag, setSegmentDrag] = useState(null);
   const [newSegmentStyle, setNewSegmentStyle] = useState("solid"); // solid | dashed
   const [tool, setTool] = useState("point"); // "point" | "segment"
-
   const [panelOpen, setPanelOpen] = useState(true);
+  const [showHint, setShowHint] = useState(true);
 
   // --- preset states----
   const [userPresets, setUserPresets] = useState(() => loadUserPresets());
@@ -444,6 +445,7 @@ export default function GraphCanvas() {
       }
 
       setSegmentDrag(null);
+      
       return;
     }
 
@@ -464,6 +466,11 @@ export default function GraphCanvas() {
     );
   }
 
+   // show/hide hint function for segment making
+  function handleCreateSegment() {
+    setShowHint(false);
+  }
+
   //simple right-click delete point
   function onPointContextMenu(e, pointId) {
     e.preventDefault();
@@ -473,6 +480,8 @@ export default function GraphCanvas() {
     );
     setSelectedPointId((cur) => (cur === pointId ? null : cur));
   }
+
+ 
 
   //---labeling of points logic---
 
@@ -569,11 +578,12 @@ export default function GraphCanvas() {
   }
 
   return (
-    <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
+    <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
       {/* Control Panel */}
       <div
         style={{
           width: panelOpen ? 360 : 44,
+
           border: "1px solid #ddd",
           borderRadius: 8,
           padding: panelOpen ? 12 : 6,
@@ -593,7 +603,7 @@ export default function GraphCanvas() {
           }}
           title={panelOpen ? "Collapse panel" : "Expand panel"}
         >
-          {panelOpen ? "<= Close Planel " : " => "}
+          {panelOpen ? "<= Close Panel " : " => "}
         </button>
 
         {panelOpen && (
@@ -602,7 +612,7 @@ export default function GraphCanvas() {
               marginTop: 12,
               display: "grid",
               gap: 12,
-              maxHeight: H,
+              height: "calc(100vh - 120px)",
               overflowY: "auto",
             }}
           >
@@ -1372,6 +1382,23 @@ export default function GraphCanvas() {
           )}
         </svg>
       </div>
+
+     
     </div>
   );
 }
+
+/*
+ { Create segment Hint }
+      {showHint && ( 
+      <div style={styles.hint}>
+        <p>To Create a Segment:</p>
+        <p>Create two points. Select segments undertools. Click and drag from one point to another</p>
+
+      </div>
+      )}
+
+
+
+
+*/
